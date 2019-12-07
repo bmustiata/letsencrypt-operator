@@ -1,4 +1,5 @@
 from typing import Dict, Set, Any, Optional
+import addict
 from kubernetes import client, config, watch
 
 
@@ -21,9 +22,20 @@ pending_events: Dict[str, Any] = dict()
 
 
 class IngressEvent:
+    """
+    Contains an ingress notification object that needs to be updated.
+    """
     id: str
     state: str
     event: Any
+
+
+class CertificateSecretEvent:
+    """
+    Contains a secret object that stores the certificates for a site.
+    This needs to be scanned if it's about to expire, and renew it.
+    """
+    id: str
 
 
 class Data:
@@ -39,7 +51,7 @@ def scan_for_secrets_without_ingress(context: Token[Data]):
     pass
 
 
-@adhesive.gateway('Is certificate {id} in valid range?')
+@adhesive.gateway('Is certificate {event.id} in valid range?')
 def is_certificate_event_id_in_valid_range_(context: Token[Data]):
     pass
 
@@ -47,7 +59,10 @@ def is_certificate_event_id_in_valid_range_(context: Token[Data]):
 @adhesive.message('Scan current certificates every hour.')
 def message_scan_current_certificates_every_hour_(context):
     while True:
-        time.sleep(3600)
+        time.sleep(6000)
+        yield addict.Dict({
+            "id": 'vpn.ciplogic.com',
+        })
     # message_data = 'data'
     # yield message_data
 
@@ -60,25 +75,27 @@ def message_start_event(context: adhesive.Token[Data]):
     while True:
         try:
             for event in w.stream(beta.list_ingress_for_all_namespaces):
-                print(event["object"].metadata.name)
-                yield {
+                yield addict.Dict({
                     "event": event,
                     "id": event["object"].metadata.name,
                     "state": "new"
-                }
+                })
         except Exception as e:
             # ignore exceptions on purpose
             LOG.info(f"Exception {e} ignored.")
             time.sleep(1)
 
 
-@adhesive.task('Deduplicate Events')
+@adhesive.task('Deduplicate Events for {event.id}')
 def deduplicate_events(context: Token[Data]):
     global already_running
     global pending_events
 
     data = context.data
-    assert data.event
+
+    # No event
+    if not data.event:
+        return
 
     event: IngressEvent = data.event
 
@@ -110,8 +127,23 @@ def deduplicate_events(context: Token[Data]):
     return context.data
 
 
-@adhesive.task('Ensure certificate is valid for {event.id}')
-def ensure_certificate_is_valid_for_event_id_(context: Token[Data]):
+@adhesive.gateway('Determine Action')
+def determine_action(context: adhesive.Token[Data]) -> None:
+    pass
+
+
+@adhesive.task('Renew Certificate for {event.id}')
+def renew_certificate_for_event_id_(context: adhesive.Token[Data]) -> None:
+    pass
+
+
+@adhesive.task('Create Certificate for {event.id}')
+def create_certificate_for_event_id_(context: adhesive.Token[Data]) -> None:
+    pass
+
+
+@adhesive.task('Delete Certificate for {event.id}')
+def delete_certificate_for_event_id_(context: adhesive.Token[Data]) -> None:
     pass
 
 
