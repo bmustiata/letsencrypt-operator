@@ -1,0 +1,2 @@
+adhesive==1.0.3
+requests==2.22.0

@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: register-domain
+  namespace: vpn-ciplogic-com
+spec:
+  template:
+    metadata:
+      labels:
+        app: register-domain
+    spec:
+      containers:
+      - name: http-server
+        image: germaniumhq/test
+        imagePullPolicy: Always
+        command:
+        - /bin/cat
+        tty: true
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - mountPath: /www/
+          name: empty-folder
+        env:
+        - name: DOMAIN_NAMES
+          value: vpn.ciplogic.com
+      volumes:
+      - name: empty-folder
+        hostPath:
+          path: /www/
+      restartPolicy: Never
+  backoffLimit: 4
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: register-domain-com
+  namespace: vpn-ciplogic-com
+  labels:
+    app: register-domain
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8000
+  selector:
+    app: register-domain
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: register-domain.com
+  namespace: vpn-ciplogic-com
+spec:
+  rules:
+  - host: vpn.ciplogic.com
+    http:
+      paths:
+      - backend:
+          serviceName: register-domain-com
+          servicePort: http
+        path: /.well-known/
+
