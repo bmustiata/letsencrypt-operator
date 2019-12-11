@@ -12,6 +12,10 @@ RUN apt-get update -y && \
     certbot-auto --install-only -n && \
     rm -rf /var/lib/apt/lists/*
 
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.17.0/bin/linux/amd64/kubectl && \
+    mv kubectl /usr/local/bin && \
+    chmod +x /usr/local/bin/kubectl
+
 COPY new-certificate* /usr/local/bin/
 
 USER 1000

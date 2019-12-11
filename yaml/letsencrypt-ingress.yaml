@@ -18,16 +18,11 @@ spec:
         tty: true
         ports:
         - containerPort: 8000
-        volumeMounts:
-        - mountPath: /www/
-          name: empty-folder
         env:
         - name: DOMAIN_NAMES
           value: vpn.ciplogic.com
-      volumes:
-      - name: empty-folder
-        hostPath:
-          path: /www/
+        - name: KUBERNETES_NAMESPACE
+          value: vpn-ciplogic-com
       restartPolicy: Never
   backoffLimit: 4
 ---
