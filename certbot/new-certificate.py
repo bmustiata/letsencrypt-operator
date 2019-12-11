@@ -65,7 +65,6 @@ def create_certificate_for_domain_name_(context: adhesive.Token[Data]) -> None:
                 --agree-tos \\
                 --email bogdan.mustiata@gmail.com \\
                 -n \\
-                --test-cert \\
                 {domains_as_string} \\
                 --config-dir /tmp/le/config \\
                 --work-dir /tmp/le/work \\

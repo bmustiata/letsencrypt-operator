@@ -13,9 +13,9 @@ spec:
       - name: http-server
         image: germaniumhq/letsencrypt-certbot
         imagePullPolicy: Always
-        command:
-        - /bin/cat
-        tty: true
+        #command:
+        #- /bin/cat
+        #tty: true
         ports:
         - containerPort: 8000
         env:
