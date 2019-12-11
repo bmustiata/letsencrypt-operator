@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: http-server
-        image: germaniumhq/test
+        image: germaniumhq/letsencrypt-certbot
         imagePullPolicy: Always
         command:
         - /bin/cat
