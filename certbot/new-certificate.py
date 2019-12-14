@@ -20,7 +20,6 @@ PORT = 8000
 class Data:
     namespace: str
     domain_names: List[str]
-    test_mode: bool
     _error: Exception
     ingress_object: str
 
@@ -146,8 +145,6 @@ def add_tls_secret_to_ingress(context: adhesive.Token[Data]) -> None:
 
 @adhesive.task('Create Certificate for {domain_names}')
 def create_certificate_for_domain_name_(context: adhesive.Token[Data]) -> None:
-    # certbot-auto renew --webroot --agree-tos --email
-    # bogdan.mustiata@gmail.com -n -d vpn.ciplogic.com --webroot-path /tmp/www
     domains_as_string = f"-d {' -d '.join(context.data.domain_names)}"
 
     context.workspace.run(f"""
@@ -174,7 +171,7 @@ def stop_http_server(context: adhesive.Token) -> None:
     httpd.shutdown()
 
 
-@adhesive.task('Create Secret {context.data.ingress_object}')
+@adhesive.task('Create Secret {ingress_object}')
 def create_secret(context: adhesive.Token[Data]) -> None:
     kube = KubeApi(context.workspace)
     namespace = context.data.namespace
@@ -216,7 +213,7 @@ def wait_for_url(url: str) -> None:
     def wait_for_server():
         try:
             LOG.info("new request")
-            r = requests.get(url)
+            r = requests.get(url, verify=False)  # we might get our own TLS
             if r.status_code // 100 == 2:
                 return True
         except Exception as e:
