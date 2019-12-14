@@ -1,7 +1,8 @@
-from typing import Optional, List
+from typing import Optional, List, Set
 
 import adhesive
 from adhesive.kubeapi import KubeApi
+import yamldict
 import http.server
 import socketserver
 import time
@@ -19,7 +20,9 @@ PORT = 8000
 class Data:
     namespace: str
     domain_names: List[str]
+    test_mode: bool
     _error: Exception
+    ingress_object: str
 
 
 httpd: Optional[socketserver.TCPServer] = None
@@ -43,26 +46,116 @@ def start_http_server(context: adhesive.Token) -> None:
         httpd.serve_forever(poll_interval=1)
 
 
+@adhesive.task('Create service for registering the domain')
+def create_service_for_registering_the_domain(context: adhesive.Token[Data]) -> None:
+    kubeapi = KubeApi(context.workspace, context.data.namespace)
+
+    kubeapi.apply(f"""
+        apiVersion: v1
+        kind: Service
+        metadata:
+            name: register-domain
+        spec:
+            type: ClusterIP
+            ports:
+            - name: http
+              port: {PORT}
+            selector:
+              app: register-domain
+    """)
+
+
+@adhesive.task('Delete service for registering domains')
+def delete_service_for_registering_domains(context: adhesive.Token[Data]) -> None:
+    kubeapi = KubeApi(context.workspace, context.data.namespace)
+    kubeapi.delete(kind="service", name="register-domain")
+
+
 @adhesive.task('Wait for HTTP Server to be up')
-def wait_for_http_server_to_be_up(context: adhesive.Token) -> None:
+def wait_for_http_server_to_be_up(context: adhesive.Token[Data]) -> None:
     wait_for_url(f'http://localhost:{PORT}/')
 
 
-@adhesive.task('Wait for Connectivity')
-def wait_for_connectivity(context: adhesive.Token[Data]) -> None:
-    wait_for_url(f"http://{context.data.domain_names[0]}/.well-known/")
+@adhesive.task('Wait for domain {loop.value}')
+def wait_for_domain_loop_value_(context: adhesive.Token[Data]) -> None:
+    assert context.loop
+    wait_for_url(f"http://{context.loop.value}/.well-known/")
 
 
-@adhesive.task('Create Certificate for {domain_name}')
+@adhesive.task('Patch Ingress Object {ingress_object}')
+def patch_ingress_object_ingress_object_(context: adhesive.Token[Data]) -> None:
+    kubeapi = KubeApi(context.workspace, context.data.namespace)
+    ingress = kubeapi.get(kind="ingress",
+                          name=context.data.ingress_object,
+                          namespace=context.data.namespace)
+
+    domain_names: Set[str] = set()
+
+    for rule in ingress.spec.rules:
+        domain_names.add(rule.host)
+        rule.http.paths._raw.insert(0, yamldict.create(f"""
+            backend:
+              serviceName: register-domain
+              servicePort: http
+            path: /.well-known/
+        """))
+
+    context.data.domain_names = list(domain_names)
+    kubeapi.apply(ingress)
+
+
+def remove_well_known_paths(ingress):
+    for rule in ingress.spec.rules:
+        for i in reversed(range(len(rule.http.paths))):
+            path = rule.http.paths[i].path
+            print(f"Comparing path: {path} with /.well-known")
+            if path == '/.well-known/':
+                del rule.http.paths[i]
+
+
+@adhesive.task('Revert Ingress Object {ingress_object}')
+def revert_ingress_object_ingress_object_(context: adhesive.Token[Data]) -> None:
+    kubeapi = KubeApi(context.workspace, context.data.namespace)
+    ingress = kubeapi.get(kind="ingress",
+                          name=context.data.ingress_object,
+                          namespace=context.data.namespace)
+
+    remove_well_known_paths(ingress)
+
+    kubeapi.apply(ingress)
+
+
+@adhesive.task('Add TLS secret to ingress {ingress_object}')
+def add_tls_secret_to_ingress(context: adhesive.Token[Data]) -> None:
+    kubeapi = KubeApi(context.workspace, context.data.namespace)
+    ingress = kubeapi.get(kind="ingress",
+                          name=context.data.ingress_object,
+                          namespace=context.data.namespace)
+
+    remove_well_known_paths(ingress)
+
+    ingress.spec.tls = [
+        {
+            "hosts": context.data.domain_names,
+            "secretName": context.data.ingress_object
+        }
+    ]
+
+    kubeapi.apply(ingress)
+
+
+@adhesive.task('Create Certificate for {domain_names}')
 def create_certificate_for_domain_name_(context: adhesive.Token[Data]) -> None:
     # certbot-auto renew --webroot --agree-tos --email
     # bogdan.mustiata@gmail.com -n -d vpn.ciplogic.com --webroot-path /tmp/www
     domains_as_string = f"-d {' -d '.join(context.data.domain_names)}"
 
     context.workspace.run(f"""
+        export LE_AUTO_SUDO=
         certbot-auto certonly \\
                 --webroot \\
                 --agree-tos \\
+                --no-bootstrap \\
                 --email bogdan.mustiata@gmail.com \\
                 -n \\
                 {domains_as_string} \\
@@ -81,7 +174,7 @@ def stop_http_server(context: adhesive.Token) -> None:
     httpd.shutdown()
 
 
-@adhesive.task('Create Secret {namespace}-le')
+@adhesive.task('Create Secret {context.data.ingress_object}')
 def create_secret(context: adhesive.Token[Data]) -> None:
     kube = KubeApi(context.workspace)
     namespace = context.data.namespace
@@ -95,7 +188,7 @@ def create_secret(context: adhesive.Token[Data]) -> None:
         kind: Secret
         type: kubernetes.io/tls
         metadata:
-            name: {namespace}-le
+            name: {context.data.ingress_object}
             namespace: {namespace}
         data:
             tls.crt: {tls_certificate}
@@ -139,23 +232,25 @@ def wait_for_url(url: str) -> None:
     raise Exception("Timeouted.")
 
 
-def main() -> None:
-    domain_names = os.getenv("DOMAIN_NAMES")
+def read_env(envvar: str) -> str:
+    result = os.getenv(envvar)
 
-    if not domain_names:
-        print("No DOMAIN_NAMES were available in the environment")
+    if not result:
+        print(f"No {envvar} was available in the environment")
         sys.exit(1)
 
-    kubernetes_namespace = os.getenv("KUBERNETES_NAMESPACE")
-    if not kubernetes_namespace:
-        print("NO KUBERENETES_NAMESPACE was available in the environment")
-        sys.exit(3)
+    return result
+
+
+def main() -> None:
+    kubernetes_namespace = read_env("KUBERNETES_NAMESPACE")
+    ingress_object_name = read_env("INGRESS_OBJECT")
 
     adhesive.bpmn_build(
         "new-certificate.bpmn",
         initial_data={
-            "namespace": os.getenv('KUBERNETES_NAMESPACE'),
-            "domain_names": domain_names.split(" ")
+            "namespace": kubernetes_namespace,
+            "ingress_object": ingress_object_name,
         })
 
 
