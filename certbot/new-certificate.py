@@ -99,15 +99,24 @@ def patch_ingress_object_ingress_object_(context: adhesive.Token[Data]) -> None:
             path: /.well-known/
         """))
 
+    # W/A for:
+    # https://github.com/kubernetes/ingress-nginx/issues/1567
+    # NginX always redirects to ssl for some reason, even if no TLS
+    # is configured.
+    if not ingress.spec.tls:
+        ingress.metadata.annotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "false"
+
     context.data.domain_names = list(domain_names)
     kubeapi.apply(ingress)
 
 
 def remove_well_known_paths(ingress):
+    if "nginx.ingress.kubernetes.io/ssl-redirect" in ingress.metadata.annotations:
+        del ingress.metadata.annotations["nginx.ingress.kubernetes.io/ssl-redirect"]
+
     for rule in ingress.spec.rules:
         for i in reversed(range(len(rule.http.paths))):
             path = rule.http.paths[i].path
-            print(f"Comparing path: {path} with /.well-known")
             if path == '/.well-known/':
                 del rule.http.paths[i]
 
@@ -221,10 +230,10 @@ def wait_for_url(url: str) -> None:
 
         return False
 
-    for i in range(2500):  # 2500 * 0.4 = 1000 seconds
+    for i in range(500):  # 500 * 2 = 1000 seconds
         if wait_for_server():
             return
-        time.sleep(0.4)
+        time.sleep(2)
 
     raise Exception("Timeouted.")
 

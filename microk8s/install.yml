@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: letsencrypt-operator
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: letsencrypt-operator
+  namespace: letsencrypt-operator
+  labels:
+    app: letsencrypt-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: letsencrypt-operator
+  template:
+    metadata:
+      labels:
+        app: letsencrypt-operator
+    spec:
+      containers:
+      - name: letsencrypt-operator
+        image: germaniumhq/certbot
+
