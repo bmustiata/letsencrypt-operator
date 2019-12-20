@@ -81,6 +81,11 @@ def wait_for_domain_loop_value_(context: adhesive.Token[Data]) -> None:
     wait_for_url(f"http://{context.loop.value}/.well-known/")
 
 
+@adhesive.task('Wait for service to be up')
+def wait_for_service_to_be_up(context: adhesive.Token) -> None:
+    wait_for_url(f'http://register-domain:{PORT}/')
+
+
 @adhesive.task('Patch Ingress Object {ingress_object}')
 def patch_ingress_object_ingress_object_(context: adhesive.Token[Data]) -> None:
     kubeapi = KubeApi(context.workspace, context.data.namespace)

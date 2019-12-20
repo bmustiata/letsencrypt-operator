@@ -223,9 +223,12 @@ def create_or_renew_certificate_for_event_id_(context: adhesive.Token[Data]) -> 
           kind: Job
           metadata:
             name: {context.data.event.id}
-            namespace: letsencrypt-operator
+            namespace: {context.data.event.namespace}
           spec:
             template:
+              metadata:
+                labels:
+                  app: register-domain
               spec:
                 containers:
                 - name: register-domain
@@ -247,7 +250,7 @@ def create_or_renew_certificate_for_event_id_(context: adhesive.Token[Data]) -> 
             kubectl wait \\
                     --for=condition=complete \\
                     --timeout=300s \\
-                    --namespace=letsencrypt-operator \\
+                    --namespace={context.data.event.namespace} \\
                     job/{context.data.event.id}
         """)
 
@@ -255,7 +258,7 @@ def create_or_renew_certificate_for_event_id_(context: adhesive.Token[Data]) -> 
         kubeapi.delete(
             kind="job",
             name=context.data.event.id,
-            namespace="letsencrypt-operator")
+            namespace=context.data.event.namespace)
     # kubeapi.wait_job(
     #    name=context.data.event.id,
     #    namespace=context.data.event.namespace,
