@@ -91,6 +91,12 @@ def message_start_event(context: adhesive.Token[Data]):
     while True:
         try:
             for event in w.stream(beta.list_ingress_for_all_namespaces):
+                obj = event["object"]
+
+                if not obj.metadata.name or not obj.metadata.namespace:
+                    LOG.warn(f"Don't know how to process: {event}")
+                    continue
+
                 yield addict.Dict({
                     "event": event,
                     "id": event["object"].metadata.name,
