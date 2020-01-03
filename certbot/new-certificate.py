@@ -20,7 +20,7 @@ PORT = 8000
 class Data:
     namespace: str
     domain_names: List[str]
-    _error: Exception
+    _error: Optional[Exception]
     ingress_object: str
 
 
@@ -62,6 +62,9 @@ def create_service_for_registering_the_domain(context: adhesive.Token[Data]) -> 
             selector:
               app: register-domain
     """)
+
+    # cleanup potential previous errors
+    context.data._error = None
 
 
 @adhesive.task('Delete service for registering domains')
