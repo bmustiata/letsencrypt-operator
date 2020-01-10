@@ -10,6 +10,8 @@ import time
 import datetime
 import base64
 import logging
+import threading
+
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 
@@ -27,6 +29,7 @@ except Exception:
 
 already_running: Set[str] = set()
 pending_events: Dict[str, Any] = dict()
+lock = threading.Lock()
 
 
 class IngressObject:
@@ -182,6 +185,7 @@ def is_certificate_event_id_in_valid_range_(context: Token[Data]):
 def deduplicate_events(context: Token[Data]):
     global already_running
     global pending_events
+    global lock
 
     data = context.data
 
@@ -191,32 +195,33 @@ def deduplicate_events(context: Token[Data]):
 
     event: IngressEvent = data.event
 
-    # Since we already have events running, we let this token
-    # pass through. Since the state will be "new" and not "process"
-    # we'll drop this token.
-    if event.state == "new" and event.id in already_running:
-        pending_events[event.id] = event
+    with lock:
+        # Since we already have events running, we let this token
+        # pass through. Since the state will be "new" and not "process"
+        # we'll drop this token.
+        if event.state == "new" and event.id in already_running:
+            pending_events[event.id] = event
+            return context.data
+
+        # If we're getting notified that a task finished, we're marking
+        # the task as not running anymore for that event id type
+        if event.state == "done":
+            already_running.remove(event.id)
+
+        # If we did a loop and we returned with the done event, and nothing
+        # else is waiting we return
+        if event.state == "done" and event.id not in pending_events:
+            return context.data
+
+        # we have either a new event, or a done event arriving
+        if event.state == "done":
+            context.data.event = pending_events[event.id]
+            del pending_events[event.id]
+
+        event.state = "process"
+        already_running.add(event.id)
+
         return context.data
-
-    # If we're getting notified that a task finished, we're marking
-    # the task as not running anymore for that event id type
-    if event.state == "done":
-        already_running.remove(event.id)
-
-    # If we did a loop and we returned with the done event, and nothing
-    # else is waiting we return
-    if event.state == "done" and event.id not in pending_events:
-        return context.data
-
-    # we have either a new event, or a done event arriving
-    if event.state == "done":
-        context.data.event = pending_events[event.id]
-        del pending_events[event.id]
-
-    event.state = "process"
-    already_running.add(event.id)
-
-    return context.data
 
 
 @adhesive.task('Create/Renew Certificate for {event.id}')
