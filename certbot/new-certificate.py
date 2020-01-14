@@ -111,17 +111,13 @@ def patch_ingress_object_ingress_object_(context: adhesive.Token[Data]) -> None:
     # https://github.com/kubernetes/ingress-nginx/issues/1567
     # NginX always redirects to ssl for some reason, even if no TLS
     # is configured.
-    if not ingress.spec.tls:
-        ingress.metadata.annotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "false"
+    ingress.metadata.annotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "false"
 
     context.data.domain_names = list(domain_names)
     kubeapi.apply(ingress)
 
 
 def remove_well_known_paths(ingress):
-    if "nginx.ingress.kubernetes.io/ssl-redirect" in ingress.metadata.annotations:
-        del ingress.metadata.annotations["nginx.ingress.kubernetes.io/ssl-redirect"]
-
     for rule in ingress.spec.rules:
         for i in reversed(range(len(rule.http.paths))):
             path = rule.http.paths[i].path
