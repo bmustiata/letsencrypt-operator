@@ -195,29 +195,36 @@ def deduplicate_events(context: Token[Data]):
 
     event: IngressEvent = data.event
 
+    assert event.state == "new" or event.state == "done"
+
     with lock:
         # Since we already have events running, we let this token
         # pass through. Since the state will be "new" and not "process"
         # we'll drop this token.
         if event.state == "new" and event.id in already_running:
+            LOG.info(f"Task {event.id} is already running. Queuing in pending.")
             pending_events[event.id] = event
             return context.data
 
         # If we're getting notified that a task finished, we're marking
         # the task as not running anymore for that event id type
         if event.state == "done":
+            LOG.info(f"Task {event.id} done.")
             already_running.remove(event.id)
 
         # If we did a loop and we returned with the done event, and nothing
         # else is waiting we return
         if event.state == "done" and event.id not in pending_events:
+            LOG.info(f"Task {event.id} has nothing to be done.")
             return context.data
 
         # we have either a new event, or a done event arriving
         if event.state == "done":
+            LOG.info(f"Task {event.id} starts from a done event. Clearing pending.")
             context.data.event = pending_events[event.id]
             del pending_events[event.id]
 
+        LOG.info(f"Task {event.id} set for processing.")
         event.state = "process"
         already_running.add(event.id)
 
@@ -276,9 +283,10 @@ def create_or_renew_certificate_for_event_id_(context: adhesive.Token[Data]) -> 
     #    timeout=300)  # 5 minutes
 
 
-@adhesive.task('Log error')
+@adhesive.task('Log error for {event.id}')
 def log_error(context: Token[Data]):
     LOG.error(f"Error: {context.data._error}")
+    context.data._error = None
 
 
 @adhesive.task('Set the event as processed for {event.id}')
