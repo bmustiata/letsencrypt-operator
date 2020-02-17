@@ -295,6 +295,11 @@ def set_the_event_as_processed(context: Token[Data]):
     context.data.event.state = "done"
 
 
+@adhesive.task('No more events for {event.id}')
+def no_more_events_for_event_id_(context: Token[Data]) -> None:
+    pass
+
+
 adhesive.bpmn_build(
     "letsencrypt-operator.bpmn",
     wait_tasks=False)

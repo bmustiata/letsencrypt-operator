@@ -20,7 +20,7 @@
       <outgoing>_13</outgoing>
     </task>
     <sequenceFlow id="_12" sourceRef="_33" targetRef="_6"/>
-    <sequenceFlow id="_13" sourceRef="_6" targetRef="_5"/>
+    <sequenceFlow id="_13" sourceRef="_6" targetRef="_29"/>
     <task completionQuantity="1" id="_7" isForCompensation="false" name="Deduplicate&#10;Events for&#10;{event.id}" startQuantity="1">
       <incoming>_2</incoming>
       <incoming>_8</incoming>
@@ -28,7 +28,7 @@
       <outgoing>_14</outgoing>
     </task>
     <sequenceFlow id="_14" sourceRef="_7" targetRef="_11"/>
-    <sequenceFlow id="_15" sourceRef="_11" targetRef="_5"/>
+    <sequenceFlow id="_15" sourceRef="_11" targetRef="_29"/>
     <sequenceFlow id="_23" sourceRef="_22" targetRef="_25"/>
     <sequenceFlow id="_8" sourceRef="_25" targetRef="_7">
       <extensionElements>
@@ -47,11 +47,6 @@
       <outgoing>_15</outgoing>
       <outgoing>_10</outgoing>
     </exclusiveGateway>
-    <endEvent id="_5" name="End Event">
-      <incoming>_13</incoming>
-      <incoming>_15</incoming>
-      <inputSet/>
-    </endEvent>
     <startEvent id="_22" isInterrupting="true" name="Scan current&#10;certificates&#10;every hour." parallelMultiple="false">
       <extensionElements>
         <yaoqiang:label offset-x="63.0" offset-y="-59.0"/>
@@ -98,7 +93,7 @@
       <extensionElements>
         <yaoqiang:label offset-x="-1.0" offset-y="0.0" x="0.0" y="10.0"/>
       </extensionElements>
-      <conditionExpression><![CDATA[event["state"] == "process"]]></conditionExpression>
+      <conditionExpression><![CDATA[event.state == "process"]]></conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="_31" sourceRef="_30" targetRef="_6">
       <extensionElements>
@@ -156,6 +151,16 @@
       <errorEventDefinition id="_20_ED_1"/>
     </boundaryEvent>
     <sequenceFlow id="_21" sourceRef="_20" targetRef="_19"/>
+    <task completionQuantity="1" id="_29" isForCompensation="false" name="No more events&#10;for {event.id}" startQuantity="1">
+      <incoming>_13</incoming>
+      <incoming>_15</incoming>
+      <outgoing>_32</outgoing>
+    </task>
+    <endEvent id="_5" name="End Event">
+      <incoming>_32</incoming>
+      <inputSet/>
+    </endEvent>
+    <sequenceFlow id="_32" sourceRef="_29" targetRef="_5"/>
     <textAnnotation id="_26" textFormat="text/plain">
       <text>Events are deduplicated
 at domain name level</text>
@@ -192,12 +197,6 @@ at domain name level</text>
         <dc:Bounds height="42.0" width="42.0" x="560.0" y="280.0"/>
         <bpmndi:BPMNLabel>
           <dc:Bounds height="18.8" width="6.0" x="578.0" y="324.0"/>
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape bpmnElement="_5" id="Yaoqiang-_5">
-        <dc:Bounds height="32.0" width="32.0" x="1540.0" y="280.0"/>
-        <bpmndi:BPMNLabel>
-          <dc:Bounds height="18.8" width="62.0" x="1525.0" y="321.72"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="_22" id="Yaoqiang-_22">
@@ -245,7 +244,19 @@ at domain name level</text>
       <bpmndi:BPMNShape bpmnElement="_4" id="Yaoqiang-_4">
         <dc:Bounds height="32.0" width="32.0" x="270.0" y="450.0"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds height="18.8" width="62.0" x="255.0" y="491.0"/>
+          <dc:Bounds height="18.8" width="62.0" x="255.0" y="491.08"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_29" id="Yaoqiang-_29">
+        <dc:Bounds height="55.0" width="111.0" x="1560.0" y="270.0"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="32.8" width="97.0" x="1567.0" y="283.1"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_5" id="Yaoqiang-_5">
+        <dc:Bounds height="32.0" width="32.0" x="1710.0" y="280.0"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="18.8" width="62.0" x="1695.0" y="321.8"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape bpmnElement="_20" id="Yaoqiang-_20">
@@ -331,9 +342,9 @@ at domain name level</text>
       <bpmndi:BPMNEdge bpmnElement="_15" id="Yaoqiang-_15">
         <di:waypoint x="581.0" y="322.0"/>
         <di:waypoint x="1000.0" y="510.0"/>
-        <di:waypoint x="1556.0" y="312.0"/>
+        <di:waypoint x="1615.5" y="325.0"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds height="18.8" width="6.0" x="1070.5" y="500.6"/>
+          <dc:Bounds height="18.8" width="6.0" x="1093.75" y="500.6"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="_47" id="Yaoqiang-_47">
@@ -360,9 +371,9 @@ at domain name level</text>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="_13" id="Yaoqiang-_13">
         <di:waypoint x="1524.0" y="297.5"/>
-        <di:waypoint x="1540.0" y="296.0"/>
+        <di:waypoint x="1560.0" y="297.5"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds height="18.8" width="6.0" x="1529.0" y="287.35"/>
+          <dc:Bounds height="18.8" width="6.0" x="1539.0" y="288.1"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="_12" id="Yaoqiang-_12">
@@ -393,7 +404,7 @@ at domain name level</text>
         <di:waypoint x="690.0" y="300.0"/>
         <di:waypoint x="771.0" y="300.0"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds height="18.8" width="166.0" x="602.0" y="280.6"/>
+          <dc:Bounds height="18.8" width="152.0" x="609.0" y="280.6"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="_40" id="Yaoqiang-_40">
@@ -402,6 +413,13 @@ at domain name level</text>
         <di:waypoint x="1448.0" y="270.0"/>
         <bpmndi:BPMNLabel>
           <dc:Bounds height="18.8" width="94.0" x="1141.5" y="200.6"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_32" id="Yaoqiang-_32">
+        <di:waypoint x="1671.0" y="297.5"/>
+        <di:waypoint x="1710.0" y="296.0"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="18.8" width="6.0" x="1687.5" y="287.35"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="_31" id="Yaoqiang-_31">
