@@ -1,5 +1,5 @@
-adhesive==1.2.2
-requests==2.22.0
+adhesive==1.4.1
+requests==2.24.0
 cryptography==2.7
-Click==7.0
+Click==7.1.2
 kubernetes==10.0.1

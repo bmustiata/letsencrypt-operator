@@ -23,4 +23,6 @@ spec:
       containers:
       - name: letsencrypt-operator
         image: germaniumhq/certbot
-
+        env:
+        - name: ADHESIVE_PARALLEL_PROCESSING
+          value: process

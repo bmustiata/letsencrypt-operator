@@ -15,6 +15,6 @@ docker run -it \
     -w $(pwd) \
     -u $(id -u):$(id -g) \
     $(id -G | perl -pe 's/(\d+)/--group-add \1/g') \
-    germaniumhq/adhesive:1.2.2 \
+    germaniumhq/adhesive:1.4.1 \
     adhesive $@
 

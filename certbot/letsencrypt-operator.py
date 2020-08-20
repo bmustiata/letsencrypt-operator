@@ -112,7 +112,7 @@ def message_start_event(context: adhesive.Token[Data]):
             time.sleep(1)
 
 
-@adhesive.gateway('Is certificate {event.id} in valid range?')
+@adhesive.task('Is certificate {event.id} in valid range?', deduplicate='event.id')
 def is_certificate_event_id_in_valid_range_(context: Token[Data]):
     namespace = context.data.event.namespace
     name = context.data.event.id
@@ -181,56 +181,6 @@ def is_certificate_event_id_in_valid_range_(context: Token[Data]):
     context.data.valid_certificate = True
 
 
-@adhesive.task('Deduplicate Events for {event.id}')
-def deduplicate_events(context: Token[Data]):
-    global already_running
-    global pending_events
-    global lock
-
-    data = context.data
-
-    # No event
-    if not data.event:
-        return
-
-    event: IngressEvent = data.event
-
-    assert event.state == "new" or event.state == "done"
-
-    with lock:
-        # Since we already have events running, we let this token
-        # pass through. Since the state will be "new" and not "process"
-        # we'll drop this token.
-        if event.state == "new" and event.id in already_running:
-            LOG.info(f"Task {event.id} is already running. Queuing in pending.")
-            pending_events[event.id] = event
-            return context.data
-
-        # If we're getting notified that a task finished, we're marking
-        # the task as not running anymore for that event id type
-        if event.state == "done":
-            LOG.info(f"Task {event.id} done.")
-            already_running.remove(event.id)
-
-        # If we did a loop and we returned with the done event, and nothing
-        # else is waiting we return
-        if event.state == "done" and event.id not in pending_events:
-            LOG.info(f"Task {event.id} has nothing to be done.")
-            return context.data
-
-        # we have either a new event, or a done event arriving
-        if event.state == "done":
-            LOG.info(f"Task {event.id} starts from a done event. Clearing pending.")
-            context.data.event = pending_events[event.id]
-            del pending_events[event.id]
-
-        LOG.info(f"Task {event.id} set for processing.")
-        event.state = "process"
-        already_running.add(event.id)
-
-        return context.data
-
-
 @adhesive.task('Create/Renew Certificate for {event.id}')
 def create_or_renew_certificate_for_event_id_(context: adhesive.Token[Data]) -> None:
     kubeapi = KubeApi(context.workspace)
@@ -289,17 +239,7 @@ def log_error(context: Token[Data]):
     context.data._error = None
 
 
-@adhesive.task('Set the event as processed for {event.id}')
-def set_the_event_as_processed(context: Token[Data]):
-    assert context.data.event
-    context.data.event.state = "done"
-
-
-@adhesive.task('No more events for {event.id}')
-def no_more_events_for_event_id_(context: Token[Data]) -> None:
-    pass
-
-
 adhesive.bpmn_build(
-    "letsencrypt-operator.bpmn",
+    "letsencrypt-operator2.bpmn",
     wait_tasks=False)
+
