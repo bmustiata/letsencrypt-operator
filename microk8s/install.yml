@@ -26,3 +26,5 @@ spec:
         env:
         - name: ADHESIVE_PARALLEL_PROCESSING
           value: process
+        - name: ADHESIVE_POOL_SIZE
+          value: "8"
