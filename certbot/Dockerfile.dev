@@ -20,7 +20,7 @@ RUN apt-get install -y curl && \
     curl -LO https://dl.eff.org/certbot-auto && \
     mv certbot-auto /usr/local/bin && \
     chown root /usr/local/bin/certbot-auto && \
-    chmod 755 /usr/local/bin/certbot-auto && \
+    chmod 777 /usr/local/bin/certbot-auto && \
     certbot-auto --install-only -n
 
 #============================================================================
